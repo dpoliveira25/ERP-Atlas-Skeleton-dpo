@@ -31,25 +31,33 @@ jobs:
           python3 - <<'PY'
           import json, urllib.request, datetime
 
-          # ====== AJUSTE COMERCIAL (mude aqui se quiser) ======
-          FATOR_MENSAL = 0.10     # mensalidade = 10% do salario minimo  (1621 -> 162)
-          FATOR_ANUAL  = 0.86     # anual ~ valor de ~10,3 meses          (1621 -> 1394)
-          LIFETIME     = 5500.0   # vitalicia: valor FIXO (nao acompanha o salario)
-          # ====================================================
+          # ====== BASE (defina UMA vez) ======
+          # O reajuste e PROPORCIONAL ao salario minimo: quando o minimo sobe X%, TODOS os
+          # planos sobem X% (INCLUSIVE o vitalicio). So mexa aqui se quiser mudar o preco-base.
+          SM_BASE        = 1621.00   # salario minimo de referencia (quando os precos abaixo valiam)
+          BASE_MENSAL    = 162.00    # preco mensal    na epoca do SM_BASE
+          BASE_ANUAL     = 1394.00   # preco anual     na epoca do SM_BASE
+          BASE_VITALICIO = 5500.00   # preco vitalicio na epoca do SM_BASE
+          # ====================================
 
           url = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.1619/dados/ultimos/1?formato=json"
           req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (ERP-Atlas bot)"})
           with urllib.request.urlopen(req, timeout=30) as r:
               sm = float(json.load(r)[0]["valor"])
 
+          fator = sm / SM_BASE              # ex.: minimo +8%  ->  fator 1.08
+          pct = (fator - 1.0) * 100.0
+
           precos = {
-              "monthly":  round(sm * FATOR_MENSAL),
-              "annual":   round(sm * FATOR_ANUAL),
-              "lifetime": LIFETIME,
+              "monthly":  round(BASE_MENSAL * fator),
+              "annual":   round(BASE_ANUAL * fator),
+              "lifetime": round(BASE_VITALICIO * fator),
               "currency": "BRL",
               "updatedAt": datetime.date.today().isoformat(),
-              "salarioMinimoBase": sm,
-              "nota": "Reajustado automaticamente: %d%% do salario minimo (R$ %.2f)" % (int(FATOR_MENSAL*100), sm),
+              "salarioMinimoBase": SM_BASE,
+              "salarioMinimoAtual": sm,
+              "reajustePercent": round(pct, 2),
+              "nota": "Reajuste proporcional ao salario minimo: %+.2f%% sobre a base (SM base R$ %.2f -> atual R$ %.2f)" % (pct, SM_BASE, sm),
           }
           with open("prices.json", "w", encoding="utf-8") as f:
               json.dump(precos, f, ensure_ascii=False, indent=2)
