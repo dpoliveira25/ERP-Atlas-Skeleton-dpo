@@ -1,9 +1,11 @@
 {
   "monthly": 162,
   "annual": 1394,
-  "lifetime": 5500.0,
+  "lifetime": 5500,
   "currency": "BRL",
   "updatedAt": "2026-06-27",
   "salarioMinimoBase": 1621.0,
-  "nota": "Reajustado automaticamente: 10% do salario minimo (R$ 1621.00)"
+  "salarioMinimoAtual": 1621.0,
+  "reajustePercent": 0.0,
+  "nota": "Reajuste proporcional ao salario minimo: +0.00% sobre a base (SM base R$ 1621.00 -> atual R$ 1621.00)"
 }
