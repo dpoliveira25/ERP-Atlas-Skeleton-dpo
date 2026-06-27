@@ -1,9 +1,9 @@
 {
-  "monthly": 162.00,
-  "annual": 1393.00,
-  "lifetime": 5500.00,
+  "monthly": 162,
+  "annual": 1394,
+  "lifetime": 5500.0,
   "currency": "BRL",
   "updatedAt": "2026-06-27",
-  "salarioMinimoBase": 1621.00,
-  "nota": "Reajustado conforme salario minimo"
+  "salarioMinimoBase": 1621.0,
+  "nota": "Reajustado automaticamente: 10% do salario minimo (R$ 1621.00)"
 }
