@@ -1,0 +1,70 @@
+# ============================================================================
+# ROBO DE REAJUSTE AUTOMATICO DO PRECO (GitHub Action — gratis)
+# ----------------------------------------------------------------------------
+# Onde colocar: no repositorio PUBLICO que tem o prices.json
+#   (github.com/dpoliveira25/ERP-Atlas-Skeleton-dpo), no caminho:
+#       .github/workflows/atualizar-precos.yml
+#
+# O que faz: todo dia le o salario minimo OFICIAL no Banco Central (serie 1619,
+# gratis, sem chave), recalcula os precos e atualiza o prices.json sozinho.
+# Quando o salario minimo for reajustado, o preco acompanha automaticamente.
+# Sem custo e sem depender de ninguem.
+# ============================================================================
+name: Atualizar precos pelo salario minimo
+
+on:
+  schedule:
+    - cron: "0 9 1,15 * *"  # dia 1 e dia 15 de cada mes, ~06:00 (Brasilia) — 2x por mes
+  workflow_dispatch: {}     # tambem da pra rodar na hora pelo botao "Run workflow" (para testar)
+
+permissions:
+  contents: write          # necessario para o robo commitar o prices.json
+
+jobs:
+  atualizar-precos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Calcular precos a partir do salario minimo
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, datetime
+
+          # ====== AJUSTE COMERCIAL (mude aqui se quiser) ======
+          FATOR_MENSAL = 0.10     # mensalidade = 10% do salario minimo  (1621 -> 162)
+          FATOR_ANUAL  = 0.86     # anual ~ valor de ~10,3 meses          (1621 -> 1394)
+          LIFETIME     = 5500.0   # vitalicia: valor FIXO (nao acompanha o salario)
+          # ====================================================
+
+          url = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.1619/dados/ultimos/1?formato=json"
+          req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (ERP-Atlas bot)"})
+          with urllib.request.urlopen(req, timeout=30) as r:
+              sm = float(json.load(r)[0]["valor"])
+
+          precos = {
+              "monthly":  round(sm * FATOR_MENSAL),
+              "annual":   round(sm * FATOR_ANUAL),
+              "lifetime": LIFETIME,
+              "currency": "BRL",
+              "updatedAt": datetime.date.today().isoformat(),
+              "salarioMinimoBase": sm,
+              "nota": "Reajustado automaticamente: %d%% do salario minimo (R$ %.2f)" % (int(FATOR_MENSAL*100), sm),
+          }
+          with open("prices.json", "w", encoding="utf-8") as f:
+              json.dump(precos, f, ensure_ascii=False, indent=2)
+              f.write("\n")
+          print("Novo prices.json:", precos)
+          PY
+
+      - name: Commitar se houve mudanca
+        run: |
+          if git diff --quiet -- prices.json; then
+            echo "Salario minimo nao mudou; nada a fazer."
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add prices.json
+            git commit -m "Reajuste automatico de precos pelo salario minimo"
+            git push
+          fi
